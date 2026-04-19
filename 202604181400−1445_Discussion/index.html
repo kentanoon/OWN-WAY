@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ディスカッション会 議事録 | 2026.04.18</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #faf7f2; display: flex; align-items: center; justify-content: center; min-height: 100vh; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+    #__bundler_loading { position: fixed; bottom: 20px; right: 20px; font: 13px/1.4 -apple-system, BlinkMacSystemFont, sans-serif; color: #666; background: #fff; padding: 8px 14px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.12); z-index: 10000; }
+    #__bundler_thumbnail { position: fixed; inset: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: #faf7f2; z-index: 9999; }
+    #__bundler_thumbnail svg { width: 100%; height: 100%; object-fit: contain; }
+    #__bundler_placeholder { color: #999; font-size: 14px; }
+  </style>
+  <noscript>
+    <style>#__bundler_loading { display: none; }</style>
+    <div style="position:fixed;bottom:12px;left:12px;font:13px/1.4 -apple-system,BlinkMacSystemFont,sans-serif;color:#999;background:rgba(255,255,255,0.9);padding:6px 12px;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,0.08);z-index:10000;">
+      This page requires JavaScript to display.
+    </div>
+  </noscript>
+</head>
+<body>
+  <div id="__bundler_thumbnail">
+  <svg viewBox="0 0 120 80" xmlns="http://www.w3.org/2000/svg">
+    <rect width="120" height="80" fill="#faf7f2"></rect>
+    <rect x="10" y="10" width="100" height="1" fill="#e8d5b7"></rect>
+    <rect x="35" y="22" width="50" height="6" rx="1" fill="#2e2018" opacity="0.7"></rect>
+    <rect x="40" y="32" width="40" height="3" rx="1" fill="#8b6f4e" opacity="0.5"></rect>
+    <rect x="10" y="44" width="22" height="24" rx="1" fill="#e8d5b7"></rect>
+    <rect x="36" y="44" width="22" height="24" rx="1" fill="#d4c4a8"></rect>
+    <rect x="62" y="44" width="22" height="24" rx="1" fill="#b5c4a8"></rect>
+    <rect x="88" y="44" width="22" height="24" rx="1" fill="#a8b5c4"></rect>
+    <rect x="10" y="72" width="100" height="1" fill="#c8a97e"></rect>
+  </svg>
+</div>
+  <div id="__bundler_loading">Unpacking...</div>
+
+  <script>
+    
+document.addEventListener('DOMContentLoaded', async function() {
+  const loading = document.getElementById('__bundler_loading');
+  function setStatus(msg) { if (loading) loading.textContent = msg; }
+
+  // Error sink persists across replaceWith since it's on window, not the DOM.
+  window.addEventListener('error', function(e) {
+    var p = document.body || document.documentElement;
+    var d = document.getElementById('__bundler_err') || p.appendChild(document.createElement('div'));
+    d.id = '__bundler_err';
+    d.style.cssText = 'position:fixed;bottom:12px;left:12px;right:12px;font:12px/1.4 ui-monospace,monospace;background:#2a1215;color:#ff8a80;padding:10px 14px;border-radius:8px;border:1px solid #5c2b2e;z-index:99999;white-space:pre-wrap;max-height:40vh;overflow:auto';
+    d.textContent = (d.textContent ? d.textContent + String.fromCharCode(10) : '') +
+      '[bundle] ' + (e.message || e.type) +
+      (e.filename ? ' (' + e.filename.slice(0, 60) + ':' + e.lineno + ')' : '');
+  }, true);
+
+  try {
+    const manifestEl = document.querySelector('script[type="__bundler/manifest"]');
+    const templateEl = document.querySelector('script[type="__bundler/template"]');
+    if (!manifestEl || !templateEl) {
+      setStatus('Error: missing bundle data');
+      console.error('[bundler] Missing script tags — manifestEl:', !!manifestEl, 'templateEl:', !!templateEl);
+      return;
+    }
+
+    const manifest = JSON.parse(manifestEl.textContent);
+    let template = JSON.parse(templateEl.textContent);
+
+    const uuids = Object.keys(manifest);
+    setStatus('Unpacking ' + uuids.length + ' assets...');
+
+    const blobUrls = {};
+    await Promise.all(uuids.map(async (uuid) => {
+      const entry = manifest[uuid];
+      try {
+        const binaryStr = atob(entry.data);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+        let finalBytes = bytes;
+        if (entry.compressed) {
+          if (typeof DecompressionStream !== 'undefined') {
+            const ds = new DecompressionStream('gzip');
+            const writer = ds.writable.getWriter();
+            const reader = ds.readable.getReader();
+            writer.write(bytes);
+            writer.close();
+            const chunks = [];
+            let totalLen = 0;
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              chunks.push(value);
+              totalLen += value.length;
+            }
+            finalBytes = new Uint8Array(totalLen);
+            let offset = 0;
+            for (const chunk of chunks) { finalBytes.set(chunk, offset); offset += chunk.length; }
+          } else {
+            console.warn('DecompressionStream not available, asset ' + uuid + ' may not render');
+          }
+        }
+
+        blobUrls[uuid] = URL.createObjectURL(new Blob([finalBytes], { type: entry.mime }));
+      } catch (err) {
+        console.error('Failed to decode asset ' + uuid + ':', err);
+        blobUrls[uuid] = URL.createObjectURL(new Blob([], { type: entry.mime }));
+      }
+    }));
+
+    const extResEl = document.querySelector('script[type="__bundler/ext_resources"]');
+    const extResources = extResEl ? JSON.parse(extResEl.textContent) : [];
+    const resourceMap = {};
+    for (const entry of extResources) {
+      if (blobUrls[entry.uuid]) resourceMap[entry.id] = blobUrls[entry.uuid];
+    }
+
+    setStatus('Rendering...');
+    for (const uuid of uuids) template = template.split(uuid).join(blobUrls[uuid]);
+
+    // Strip integrity + crossorigin — blob URLs from a file:// document inherit
+    // a null origin, so crossorigin forces a CORS fetch that SRI then rejects.
+    // The manifest bytes are ours; SRI protects against CDN compromise, not this.
+    template = template.replace(/\s+integrity="[^"]*"/gi, '').replace(/\s+crossorigin="[^"]*"/gi, '');
+
+    const resourceScript = '<script>window.__resources = ' +
+      JSON.stringify(resourceMap).split('</' + 'script>').join('<\\/' + 'script>') +
+      ';</' + 'script>';
+    // Inject after <head> so the DOCTYPE stays first; prepending the script
+    // would push the parser into quirks mode. DOMParser always emits a <head>
+    // (synthesizing one if the source HTML omitted it) but may carry
+    // attributes through, so match the full opening tag. slice() rather than
+    // replace() keeps us clear of $-pattern substitution in resourceScript.
+    const headOpen = template.match(/<head[^>]*>/i);
+    if (headOpen) {
+      const i = headOpen.index + headOpen[0].length;
+      template = template.slice(0, i) + resourceScript + template.slice(i);
+    }
+
+    // Parse the template and swap the root element. Scripts inserted via
+    // DOMParser/replaceWith are inert per spec — re-create each with
+    // createElement so they execute, awaiting onload for src scripts to
+    // preserve ordering (React before ReactDOM before Babel before text/babel).
+    const doc = new DOMParser().parseFromString(template, 'text/html');
+    document.documentElement.replaceWith(doc.documentElement);
+    const dead = Array.from(document.scripts);
+    for (const old of dead) {
+      const s = document.createElement('script');
+      for (const a of old.attributes) s.setAttribute(a.name, a.value);
+      s.textContent = old.textContent;
+      // text/babel scripts with a src: fetch and inline. transformScriptTags
+      // does XHR against the src, but blob:null/ from a file:// origin is
+      // silently dropped. Inlining makes it a plain inline babel script,
+      // which transformScriptTags handles unconditionally.
+      if ((s.type === 'text/babel' || s.type === 'text/jsx') && s.src) {
+        const r = await fetch(s.src);
+        s.textContent = await r.text();
+        s.removeAttribute('src');
+      }
+      const p = s.src ? new Promise(function(r) { s.onload = s.onerror = r; }) : null;
+      old.replaceWith(s);
+      if (p) await p;
+    }
+    // Babel standalone auto-transforms type=text/babel on DOMContentLoaded,
+    // which fired before we swapped the document. Trigger manually if present.
+    if (window.Babel && typeof window.Babel.transformScriptTags === 'function') {
+      window.Babel.transformScriptTags();
+    }
+  } catch (err) {
+    setStatus('Error unpacking: ' + err.message);
+    console.error('Bundle unpack error:', err);
+  }
+});
+
+  </script>
+
+  <script type="__bundler/manifest">
+{}
+  </script>
+
+  <script type="__bundler/ext_resources">
+[]
+  </script>
+
+  <script type="__bundler/template">
+"<!DOCTYPE html>\n<html lang=\"ja\"><head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>ディスカッション会 議事録 | 2026.04.18<\u002Ftitle>\n\n<style>\n  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n\n  :root {\n    --cream: #faf7f2;\n    --cream-mid: #f0eae0;\n    --tan: #e8d5b7;\n    --gold: #c8a97e;\n    --brown-mid: #8b6f4e;\n    --brown: #5c3d20;\n    --ink: #2e2018;\n    --serif: 'Hiragino Mincho ProN', 'Yu Mincho', '游明朝', 'Noto Serif JP', Georgia, serif;\n    --sans: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'Yu Gothic', '游ゴシック', 'Meiryo', sans-serif;\n  }\n\n  html { scroll-behavior: smooth; }\n\n  body {\n    background: var(--cream);\n    color: var(--ink);\n    font-family: var(--sans);\n    font-weight: 300;\n    line-height: 1.8;\n    overflow-x: hidden;\n  }\n\n  /* ── HERO ── */\n  .hero {\n    min-height: 100vh;\n    display: flex;\n    flex-direction: column;\n    justify-content: center;\n    align-items: center;\n    text-align: center;\n    padding: 80px 24px;\n    position: relative;\n    background: var(--cream);\n  }\n\n  .hero::before {\n    content: '';\n    position: absolute;\n    inset: 0;\n    background: repeating-linear-gradient(\n      0deg,\n      transparent,\n      transparent 39px,\n      var(--tan) 39px,\n      var(--tan) 40px\n    );\n    opacity: 0.4;\n    pointer-events: none;\n  }\n\n  .hero-label {\n    font-family: var(--sans);\n    font-size: 11px;\n    letter-spacing: 0.2em;\n    color: var(--gold);\n    text-transform: uppercase;\n    margin-bottom: 32px;\n    font-weight: 500;\n  }\n\n  .hero-title {\n    font-family: var(--serif);\n    font-size: clamp(32px, 6vw, 72px);\n    font-weight: 400;\n    color: var(--ink);\n    line-height: 1.3;\n    margin-bottom: 16px;\n  }\n\n  .hero-sub {\n    font-family: var(--serif);\n    font-size: clamp(16px, 2.5vw, 24px);\n    font-weight: 300;\n    color: var(--brown-mid);\n    margin-bottom: 48px;\n  }\n\n  .hero-meta {\n    display: flex;\n    gap: 32px;\n    font-size: 13px;\n    color: var(--brown-mid);\n    letter-spacing: 0.05em;\n    flex-wrap: wrap;\n    justify-content: center;\n  }\n\n  .hero-meta span { display: flex; align-items: center; gap: 6px; }\n  .hero-meta span::before { content: ''; width: 20px; height: 1px; background: var(--gold); display: block; }\n\n  .scroll-hint {\n    position: absolute;\n    bottom: 40px;\n    left: 50%;\n    transform: translateX(-50%);\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    gap: 8px;\n    color: var(--gold);\n    font-size: 11px;\n    letter-spacing: 0.15em;\n    animation: bounce 2s ease-in-out infinite;\n  }\n\n  .scroll-hint::after {\n    content: '';\n    width: 1px;\n    height: 40px;\n    background: linear-gradient(to bottom, var(--gold), transparent);\n    display: block;\n  }\n\n  @keyframes bounce {\n    0%, 100% { transform: translateX(-50%) translateY(0); }\n    50% { transform: translateX(-50%) translateY(6px); }\n  }\n\n  /* ── SECTION WRAPPER ── */\n  .section {\n    max-width: 960px;\n    margin: 0 auto;\n    padding: 80px 24px;\n  }\n\n  .section-divider {\n    border: none;\n    border-top: 1px solid var(--tan);\n    margin: 0;\n  }\n\n  /* ── PARTICIPANTS ── */\n  .participants-section {\n    background: var(--cream-mid);\n    padding: 60px 24px;\n  }\n\n  .participants-inner {\n    max-width: 960px;\n    margin: 0 auto;\n  }\n\n  .section-eyebrow {\n    font-family: var(--sans);\n    font-size: 10px;\n    letter-spacing: 0.25em;\n    color: var(--gold);\n    font-weight: 500;\n    text-transform: uppercase;\n    margin-bottom: 32px;\n    display: flex;\n    align-items: center;\n    gap: 12px;\n  }\n\n  .section-eyebrow::after {\n    content: '';\n    flex: 1;\n    height: 1px;\n    background: var(--tan);\n  }\n\n  .participants-grid {\n    display: grid;\n    grid-template-columns: repeat(4, 1fr);\n    gap: 24px;\n  }\n\n  @media (max-width: 600px) {\n    .participants-grid { grid-template-columns: repeat(2, 1fr); }\n  }\n\n  .participant-card {\n    background: var(--cream);\n    border: 1px solid var(--tan);\n    border-radius: 2px;\n    padding: 24px 20px;\n    text-align: center;\n  }\n\n  .participant-avatar {\n    width: 56px;\n    height: 56px;\n    border-radius: 50%;\n    background: var(--tan);\n    margin: 0 auto 12px;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    font-family: var(--serif);\n    font-size: 20px;\n    color: var(--brown);\n  }\n\n  .participant-name {\n    font-family: var(--serif);\n    font-size: 15px;\n    color: var(--ink);\n    margin-bottom: 4px;\n  }\n\n  .participant-books-count {\n    font-size: 11px;\n    color: var(--brown-mid);\n    letter-spacing: 0.05em;\n  }\n\n  /* ── BOOK SECTIONS ── */\n  .person-section {\n    padding: 80px 24px;\n  }\n\n  .person-section:nth-child(even) {\n    background: var(--cream-mid);\n  }\n\n  .person-inner {\n    max-width: 960px;\n    margin: 0 auto;\n  }\n\n  .person-header {\n    display: grid;\n    grid-template-columns: 1fr auto;\n    align-items: start;\n    gap: 24px;\n    margin-bottom: 48px;\n  }\n\n  .person-name-block {}\n\n  .person-name {\n    font-family: var(--serif);\n    font-size: clamp(24px, 4vw, 40px);\n    font-weight: 400;\n    color: var(--ink);\n    margin-bottom: 8px;\n  }\n\n  .person-theme {\n    font-size: 13px;\n    color: var(--brown-mid);\n    line-height: 1.6;\n    max-width: 480px;\n  }\n\n  .person-num {\n    font-family: var(--serif);\n    font-size: 80px;\n    font-weight: 300;\n    color: var(--tan);\n    line-height: 1;\n  }\n\n  .books-list {\n    display: flex;\n    flex-direction: column;\n    gap: 20px;\n    margin-bottom: 40px;\n  }\n\n  .book-card {\n    display: grid;\n    grid-template-columns: 80px 1fr;\n    gap: 24px;\n    background: var(--cream);\n    border: 1px solid var(--tan);\n    border-radius: 2px;\n    padding: 24px;\n    align-items: start;\n    transition: border-color 0.2s;\n  }\n\n  .person-section:nth-child(even) .book-card {\n    background: var(--cream-mid);\n  }\n\n  .book-card:hover {\n    border-color: var(--gold);\n  }\n\n  .book-spine {\n    width: 80px;\n    height: 110px;\n    background: var(--tan);\n    border-radius: 2px;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .book-spine::before {\n    content: '';\n    position: absolute;\n    left: 0;\n    top: 0;\n    bottom: 0;\n    width: 8px;\n    background: rgba(0,0,0,0.08);\n  }\n\n  .book-spine-text {\n    font-family: var(--serif);\n    font-size: 9px;\n    color: var(--brown);\n    writing-mode: vertical-rl;\n    text-align: center;\n    padding: 8px 4px;\n    line-height: 1.4;\n    overflow: hidden;\n    max-height: 100px;\n  }\n\n  .book-info {}\n\n  .book-title {\n    font-family: var(--serif);\n    font-size: 16px;\n    font-weight: 500;\n    color: var(--ink);\n    line-height: 1.5;\n    margin-bottom: 6px;\n  }\n\n  .book-author {\n    font-size: 12px;\n    color: var(--brown-mid);\n    margin-bottom: 12px;\n    letter-spacing: 0.05em;\n  }\n\n  .book-note {\n    font-size: 13px;\n    color: var(--brown);\n    line-height: 1.7;\n    border-left: 2px solid var(--gold);\n    padding-left: 12px;\n  }\n\n  /* ── INSIGHTS ── */\n  .insights-list {\n    display: flex;\n    flex-direction: column;\n    gap: 12px;\n    margin-top: 24px;\n  }\n\n  .insight-item {\n    display: flex;\n    align-items: baseline;\n    gap: 12px;\n    font-size: 14px;\n    color: var(--ink);\n    line-height: 1.7;\n  }\n\n  .insight-item::before {\n    content: '';\n    width: 6px;\n    height: 6px;\n    border-radius: 50%;\n    background: var(--gold);\n    flex-shrink: 0;\n    margin-top: 8px;\n  }\n\n  /* ── HIGHLIGHT QUOTE ── */\n  .quote-block {\n    background: var(--ink);\n    color: var(--cream);\n    padding: 60px 40px;\n    text-align: center;\n    position: relative;\n    overflow: hidden;\n  }\n\n  .quote-block::before {\n    content: '\\201C';\n    font-family: var(--serif);\n    font-size: 200px;\n    position: absolute;\n    top: -40px;\n    left: 20px;\n    color: rgba(255,255,255,0.05);\n    line-height: 1;\n  }\n\n  .quote-inner {\n    max-width: 720px;\n    margin: 0 auto;\n    position: relative;\n    z-index: 1;\n  }\n\n  .quote-text {\n    font-family: var(--serif);\n    font-size: clamp(20px, 3vw, 32px);\n    font-weight: 300;\n    line-height: 1.7;\n    color: var(--cream);\n    margin-bottom: 24px;\n  }\n\n  .quote-label {\n    font-size: 12px;\n    color: var(--gold);\n    letter-spacing: 0.15em;\n  }\n\n  /* ── CYCLE DIAGRAM ── */\n  .cycle-section {\n    background: var(--cream-mid);\n    padding: 80px 24px;\n  }\n\n  .cycle-inner {\n    max-width: 960px;\n    margin: 0 auto;\n  }\n\n  .cycle-title {\n    font-family: var(--serif);\n    font-size: clamp(22px, 3vw, 36px);\n    font-weight: 400;\n    color: var(--ink);\n    margin-bottom: 8px;\n  }\n\n  .cycle-sub {\n    font-size: 14px;\n    color: var(--brown-mid);\n    margin-bottom: 56px;\n  }\n\n  .cycle-steps {\n    display: grid;\n    grid-template-columns: repeat(5, 1fr);\n    gap: 0;\n    position: relative;\n    align-items: center;\n  }\n\n  @media (max-width: 640px) {\n    .cycle-steps { grid-template-columns: 1fr; gap: 16px; }\n    .cycle-arrow { display: none; }\n  }\n\n  .cycle-step {\n    text-align: center;\n    position: relative;\n    z-index: 1;\n  }\n\n  .cycle-num {\n    width: 64px;\n    height: 64px;\n    border-radius: 50%;\n    background: var(--cream);\n    border: 2px solid var(--gold);\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    margin: 0 auto 16px;\n    font-family: var(--serif);\n    font-size: 22px;\n    font-weight: 400;\n    color: var(--brown);\n  }\n\n  .cycle-step-label {\n    font-family: var(--serif);\n    font-size: 16px;\n    font-weight: 500;\n    color: var(--ink);\n    margin-bottom: 4px;\n  }\n\n  .cycle-step-desc {\n    font-size: 11px;\n    color: var(--brown-mid);\n    line-height: 1.5;\n  }\n\n  .cycle-arrow {\n    text-align: center;\n    color: var(--gold);\n    font-size: 20px;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    padding-bottom: 40px;\n  }\n\n  /* ── SUMMARY TOPICS ── */\n  .topics-grid {\n    display: grid;\n    grid-template-columns: repeat(3, 1fr);\n    gap: 16px;\n    margin-top: 40px;\n  }\n\n  @media (max-width: 600px) {\n    .topics-grid { grid-template-columns: 1fr; }\n    .person-header { grid-template-columns: 1fr; }\n    .person-num { display: none; }\n    .book-card { grid-template-columns: 60px 1fr; gap: 16px; }\n    .participants-grid { grid-template-columns: repeat(2, 1fr); }\n  }\n\n  .topic-card {\n    background: var(--cream);\n    border: 1px solid var(--tan);\n    padding: 24px 20px;\n    border-radius: 2px;\n  }\n\n  .topic-icon {\n    width: 32px;\n    height: 32px;\n    background: var(--tan);\n    border-radius: 2px;\n    margin-bottom: 16px;\n    display: flex;\n    align-items: center;\n    justify-content: center;\n  }\n\n  .topic-name {\n    font-family: var(--serif);\n    font-size: 16px;\n    font-weight: 500;\n    color: var(--ink);\n    margin-bottom: 6px;\n  }\n\n  .topic-desc {\n    font-size: 12px;\n    color: var(--brown-mid);\n    line-height: 1.6;\n  }\n\n  /* ── NEXT MEETING ── */\n  .next-section {\n    background: var(--ink);\n    padding: 80px 24px;\n    text-align: center;\n    color: var(--cream);\n  }\n\n  .next-inner { max-width: 600px; margin: 0 auto; }\n\n  .next-label {\n    font-size: 11px;\n    letter-spacing: 0.2em;\n    color: var(--gold);\n    font-weight: 500;\n    margin-bottom: 24px;\n    text-transform: uppercase;\n  }\n\n  .next-date {\n    font-family: var(--serif);\n    font-size: clamp(32px, 6vw, 64px);\n    font-weight: 300;\n    color: var(--cream);\n    margin-bottom: 16px;\n    line-height: 1.2;\n  }\n\n  .next-time {\n    font-size: 18px;\n    color: var(--gold);\n    margin-bottom: 32px;\n  }\n\n  .next-divider {\n    width: 40px;\n    height: 1px;\n    background: var(--gold);\n    margin: 0 auto 32px;\n  }\n\n  .next-desc {\n    font-size: 14px;\n    color: rgba(250,247,242,0.6);\n    line-height: 1.7;\n  }\n\n  /* ── FOOTER ── */\n  footer {\n    background: var(--ink);\n    border-top: 1px solid rgba(255,255,255,0.06);\n    padding: 24px;\n    text-align: center;\n    font-size: 11px;\n    color: rgba(250,247,242,0.3);\n    letter-spacing: 0.08em;\n  }\n\n  /* ── FADE-IN ANIMATION ── */\n  .fade-in {\n    opacity: 0;\n    transform: translateY(20px);\n    transition: opacity 0.7s ease, transform 0.7s ease;\n  }\n\n  .fade-in.visible {\n    opacity: 1;\n    transform: translateY(0);\n  }\n<\u002Fstyle>\n\n<\u002Fhead>\n<body>\n\n<!-- HERO -->\n<section class=\"hero\">\n  <p class=\"hero-label\">Discussion Session Report<\u002Fp>\n  <h1 class=\"hero-title\">おすすめしたい本は<br>何ですか？<\u002Fh1>\n  <p class=\"hero-sub\">ディスカッション会 議事録<\u002Fp>\n  <div class=\"hero-meta\">\n    <span>2026年4月18日（土）<\u002Fspan>\n    <span>14:00〜15:15<\u002Fspan>\n    <span>参加者 4名<\u002Fspan>\n  <\u002Fdiv>\n  <div class=\"scroll-hint\">scroll<\u002Fdiv>\n<\u002Fsection>\n\n<!-- PARTICIPANTS -->\n<section class=\"participants-section\">\n  <div class=\"participants-inner\">\n    <p class=\"section-eyebrow\">参加者<\u002Fp>\n    <div class=\"participants-grid\">\n      <div class=\"participant-card fade-in\">\n        <div class=\"participant-avatar\">し<\u002Fdiv>\n        <p class=\"participant-name\">しおりさん<\u002Fp>\n        <p class=\"participant-books-count\">2冊紹介<\u002Fp>\n      <\u002Fdiv>\n      <div class=\"participant-card fade-in\">\n        <div class=\"participant-avatar\">K<\u002Fdiv>\n        <p class=\"participant-name\">KAORIさん<\u002Fp>\n        <p class=\"participant-books-count\">自叙伝を中心に<\u002Fp>\n      <\u002Fdiv>\n      <div class=\"participant-card fade-in\">\n        <div class=\"participant-avatar\">え<\u002Fdiv>\n        <p class=\"participant-name\">えーいちさん<\u002Fp>\n        <p class=\"participant-books-count\">途中参加 · 1冊<\u002Fp>\n      <\u002Fdiv>\n      <div class=\"participant-card fade-in\">\n        <div class=\"participant-avatar\">お<\u002Fdiv>\n        <p class=\"participant-name\">おかべ<\u002Fp>\n        <p class=\"participant-books-count\">2冊紹介<\u002Fp>\n      <\u002Fdiv>\n    <\u002Fdiv>\n  <\u002Fdiv>\n<\u002Fsection>\n\n<hr class=\"section-divider\">\n\n<!-- SHIORI -->\n<section class=\"person-section\">\n  <div class=\"person-inner\">\n    <div class=\"person-header fade-in\">\n      <div class=\"person-name-block\">\n        <p class=\"section-eyebrow\">01<\u002Fp>\n        <h2 class=\"person-name\">しおりさん<\u002Fh2>\n        <p class=\"person-theme\">時間の使い方・集中力を高める本から、日常の行動を変えるヒントを共有。「読むだけで終わらせず、実際に試している」姿勢が印象的でした。<\u002Fp>\n      <\u002Fdiv>\n      <div class=\"person-num\">01<\u002Fdiv>\n    <\u002Fdiv>\n\n    <div class=\"books-list\">\n      <div class=\"book-card fade-in\">\n        <div class=\"book-spine\">\n          <p class=\"book-spine-text\">脳のパフォーマンスを最大まで引き出す神・時間術<\u002Fp>\n        <\u002Fdiv>\n        <div class=\"book-info\">\n          <p class=\"book-title\">脳のパフォーマンスを最大まで引き出す<br>神・時間術<\u002Fp>\n          <p class=\"book-author\">樺沢 紫苑 著<\u002Fp>\n          <p class=\"book-note\">朝の集中時間帯に重要な作業を入れ、昼食後は歩いて眠気をリセット。ToDoリストで頭の中を整理するなど、すぐに実践できる内容が詰まっています。<\u002Fp>\n        <\u002Fdiv>\n      <\u002Fdiv>\n\n      <div class=\"book-card fade-in\">\n        <div class=\"book-spine\" style=\"background: #d4c4a8;\">\n          <p class=\"book-spine-text\">集中力がすべてを解決する<\u002Fp>\n        <\u002Fdiv>\n        <div class=\"book-info\">\n          <p class=\"book-title\">集中力がすべてを解決する<br>精神科医が教える「ゾーン」に入る方法<\u002Fp>\n          <p class=\"book-author\">樺沢 紫苑 著<\u002Fp>\n          <p class=\"book-note\">睡眠時間の確保と集中力の関係など、科学的なアプローチで「ゾーン」状態を作り出す方法を学べる一冊。<\u002Fp>\n        <\u002Fdiv>\n      <\u002Fdiv>\n    <\u002Fdiv>\n\n    <div class=\"fade-in\">\n      <p class=\"section-eyebrow\">実践していること<\u002Fp>\n      <div class=\"insights-list\">\n        <div class=\"insight-item\">朝の集中できる時間帯に重要な作業を行う<\u002Fdiv>\n        <div class=\"insight-item\">昼食後は軽く歩いて眠気をリセットする<\u002Fdiv>\n        <div class=\"insight-item\">睡眠時間をしっかり確保する<\u002Fdiv>\n        <div class=\"insight-item\">ToDoリストで頭の中を整理する<\u002Fdiv>\n      <\u002Fdiv>\n    <\u002Fdiv>\n  <\u002Fdiv>\n<\u002Fsection>\n\n<hr class=\"section-divider\">\n\n<!-- OKABE -->\n<section class=\"person-section\">\n  <div class=\"person-inner\">\n    <div class=\"person-header fade-in\">\n      <div class=\"person-name-block\">\n        <p class=\"section-eyebrow\">02<\u002Fp>\n        <h2 class=\"person-name\">おかべ<\u002Fh2>\n        <p class=\"person-theme\">人生観や価値観に影響を与えた本を紹介。相手を喜ばせる視点と、自分らしさを大切にすることへの気づきを共有しました。<\u002Fp>\n      <\u002Fdiv>\n      <div class=\"person-num\">02<\u002Fdiv>\n    <\u002Fdiv>\n\n    <div class=\"books-list\">\n      <div class=\"book-card fade-in\">\n        <div class=\"book-spine\" style=\"background: #b5c4a8;\">\n          <p class=\"book-spine-text\">賢者の書<\u002Fp>\n        <\u002Fdiv>\n        <div class=\"book-info\">\n          <p class=\"book-title\">賢者の書<\u002Fp>\n          <p class=\"book-author\">喜多川 泰 著<\u002Fp>\n          <p class=\"book-note\">相手を喜ばせる視点、自分だけの利益ではない考え方、豊かさが巡る感覚——人との関わり方や自分の在り方について深く考えさせられる一冊。<\u002Fp>\n        <\u002Fdiv>\n      <\u002Fdiv>\n\n      <div class=\"book-card fade-in\">\n        <div class=\"book-spine\" style=\"background: #c4a8a8;\">\n          <p class=\"book-spine-text\">俺か、俺以外か。<\u002Fp>\n        <\u002Fdiv>\n        <div class=\"book-info\">\n          <p class=\"book-title\">俺か、俺以外か。<br>ローランドという生き方<\u002Fp>\n          <p class=\"book-author\">ROLAND 著<\u002Fp>\n          <div class=\"book-note\">\n            自分を否定しそうになる時期に、「自分らしくあっていい」と背中を押してくれた一冊。自己肯定感に関する大切な気づきを与えてくれました。\n          <\u002Fdiv>\n        <\u002Fdiv>\n      <\u002Fdiv>\n    <\u002Fdiv>\n  <\u002Fdiv>\n<\u002Fsection>\n\n<hr class=\"section-divider\">\n\n<!-- KAORI -->\n<section class=\"person-section\">\n  <div class=\"person-inner\">\n    <div class=\"person-header fade-in\">\n      <div class=\"person-name-block\">\n        <p class=\"section-eyebrow\">03<\u002Fp>\n        <h2 class=\"person-name\">KAORIさん<\u002Fh2>\n        <p class=\"person-theme\">さまざまな人の自叙伝を愛読。コンプレックスや苦労をバネに、自分らしさを貫いた人物たちの生き様から学んでいます。<\u002Fp>\n      <\u002Fdiv>\n      <div class=\"person-num\">03<\u002Fdiv>\n    <\u002Fdiv>\n\n    <div class=\"fade-in\" style=\"margin-bottom: 40px;\">\n      <p class=\"section-eyebrow\">読んでいる人物<\u002Fp>\n      <div style=\"display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px;\">\n        <div style=\"background: var(--cream); border: 1px solid var(--tan); padding: 12px 20px; border-radius: 2px; font-family: var(--serif); font-size: 14px; color: var(--ink);\">冨永 愛<\u002Fdiv>\n        <div style=\"background: var(--cream); border: 1px solid var(--tan); padding: 12px 20px; border-radius: 2px; font-family: var(--serif); font-size: 14px; color: var(--ink);\">布袋 寅泰<\u002Fdiv>\n        <div style=\"background: var(--cream); border: 1px solid var(--tan); padding: 12px 20px; border-radius: 2px; font-family: var(--serif); font-size: 14px; color: var(--ink);\">長渕 剛<\u002Fdiv>\n        <div style=\"background: var(--cream); border: 1px solid var(--tan); padding: 12px 20px; border-radius: 2px; font-family: var(--serif); font-size: 14px; color: var(--ink);\">岡本 太郎<\u002Fdiv>\n        <div style=\"background: var(--cream); border: 1px solid var(--tan); padding: 12px 20px; border-radius: 2px; font-family: var(--serif); font-size: 14px; color: var(--ink);\">志村 けん<\u002Fdiv>\n        <div style=\"background: var(--cream); border: 1px solid var(--tan); padding: 12px 20px; border-radius: 2px; font-family: var(--serif); font-size: 14px; color: var(--ink);\">田中 角栄<\u002Fdiv>\n      <\u002Fdiv>\n    <\u002Fdiv>\n\n    <div class=\"fade-in\">\n      <p class=\"section-eyebrow\">自叙伝から学ぶこと<\u002Fp>\n      <div class=\"insights-list\">\n        <div class=\"insight-item\">その人が何を考え、どう行動し、どう生きたのかを知る<\u002Fdiv>\n        <div class=\"insight-item\">コンプレックスからの飛躍、苦労や悔しさをバネにした姿<\u002Fdiv>\n        <div class=\"insight-item\">自分の時間感覚や行動パターンへの自己理解が深まる<\u002Fdiv>\n        <div class=\"insight-item\">子どもから親が育てられている、という温かい視点<\u002Fdiv>\n      <\u002Fdiv>\n    <\u002Fdiv>\n  <\u002Fdiv>\n<\u002Fsection>\n\n<hr class=\"section-divider\">\n\n<!-- EIICHI -->\n<section class=\"person-section\">\n  <div class=\"person-inner\">\n    <div class=\"person-header fade-in\">\n      <div class=\"person-name-block\">\n        <p class=\"section-eyebrow\">04<\u002Fp>\n        <h2 class=\"person-name\">えーいちさん<\u002Fh2>\n        <p class=\"person-theme\">途中参加ながら、休日の過ごし方を見直すきっかけになった一冊を紹介。メリハリをつけ、家族との時間を大切にする実践を共有しました。<\u002Fp>\n      <\u002Fdiv>\n      <div class=\"person-num\">04<\u002Fdiv>\n    <\u002Fdiv>\n\n    <div class=\"books-list\">\n      <div class=\"book-card fade-in\">\n        <div class=\"book-spine\" style=\"background: #a8b5c4;\">\n          <p class=\"book-spine-text\">世界の一流は「休日」に何をしているのか<\u002Fp>\n        <\u002Fdiv>\n        <div class=\"book-info\">\n          <p class=\"book-title\">世界の一流は「休日」に何をしているのか<br>年収が上がる週末の過ごし方<\u002Fp>\n          <p class=\"book-author\">越川 慎司 著<\u002Fp>\n          <p class=\"book-note\">土曜日はアクティブに、日曜日はゆっくり——メリハリをつけて家族の時間を大切にするきっかけになった一冊。新しいものを得るには、今あるものを取捨選択する必要がある、という気づきも。<\u002Fp>\n        <\u002Fdiv>\n      <\u002Fdiv>\n    <\u002Fdiv>\n  <\u002Fdiv>\n<\u002Fsection>\n\n<!-- QUOTE -->\n<div class=\"quote-block\">\n  <div class=\"quote-inner\">\n    <p class=\"quote-text\">本は読むことがゴールではなく、<br>行動に移してこそ意味がある<\u002Fp>\n    <p class=\"quote-label\">全員の共通認識<\u002Fp>\n  <\u002Fdiv>\n<\u002Fdiv>\n\n<!-- CYCLE DIAGRAM -->\n<section class=\"cycle-section\">\n  <div class=\"cycle-inner\">\n    <p class=\"section-eyebrow\">実践サイクル<\u002Fp>\n    <h2 class=\"cycle-title fade-in\">読んで、気づいて、動く。<\u002Fh2>\n    <p class=\"cycle-sub fade-in\">このサイクルを回すことが、自己成長や日々の変化につながる<\u002Fp>\n\n    <div class=\"cycle-steps fade-in\">\n      <div class=\"cycle-step\">\n        <div class=\"cycle-num\">読<\u002Fdiv>\n        <p class=\"cycle-step-label\">読む<\u002Fp>\n        <p class=\"cycle-step-desc\">本を通じて知識・視点を得る<\u002Fp>\n      <\u002Fdiv>\n      <div class=\"cycle-arrow\">→<\u002Fdiv>\n      <div class=\"cycle-step\">\n        <div class=\"cycle-num\">気<\u002Fdiv>\n        <p class=\"cycle-step-label\">気づく<\u002Fp>\n        <p class=\"cycle-step-desc\">自分への問いが生まれる<\u002Fp>\n      <\u002Fdiv>\n      <div class=\"cycle-arrow\">→<\u002Fdiv>\n      <div class=\"cycle-step\">\n        <div class=\"cycle-num\">試<\u002Fdiv>\n        <p class=\"cycle-step-label\">試してみる<\u002Fp>\n        <p class=\"cycle-step-desc\">小さな行動から始める<\u002Fp>\n      <\u002Fdiv>\n      <div class=\"cycle-arrow\">→<\u002Fdiv>\n      <div class=\"cycle-step\">\n        <div class=\"cycle-num\">振<\u002Fdiv>\n        <p class=\"cycle-step-label\">振り返る<\u002Fp>\n        <p class=\"cycle-step-desc\">うまくいったか確認する<\u002Fp>\n      <\u002Fdiv>\n      <div class=\"cycle-arrow\">→<\u002Fdiv>\n      <div class=\"cycle-step\">\n        <div class=\"cycle-num\">化<\u002Fdiv>\n        <p class=\"cycle-step-label\">自分化する<\u002Fp>\n        <p class=\"cycle-step-desc\">自分に合う形にカスタマイズ<\u002Fp>\n      <\u002Fdiv>\n    <\u002Fdiv>\n  <\u002Fdiv>\n<\u002Fsection>\n\n<!-- TOPICS -->\n<section class=\"section\">\n  <p class=\"section-eyebrow fade-in\">今回の会で広がったテーマ<\u002Fp>\n  <div class=\"topics-grid\">\n    <div class=\"topic-card fade-in\">\n      <div class=\"topic-icon\">\n        <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\">\n          <circle cx=\"8\" cy=\"8\" r=\"6\" stroke=\"#8b6f4e\" stroke-width=\"1.5\"><\u002Fcircle>\n          <path d=\"M8 5v4l2 2\" stroke=\"#8b6f4e\" stroke-width=\"1.5\" stroke-linecap=\"round\"><\u002Fpath>\n        <\u002Fsvg>\n      <\u002Fdiv>\n      <p class=\"topic-name\">時間の使い方<\u002Fp>\n      <p class=\"topic-desc\">朝の集中時間の活用、睡眠確保、休日のメリハリなど、時間設計の重要性<\u002Fp>\n    <\u002Fdiv>\n    <div class=\"topic-card fade-in\">\n      <div class=\"topic-icon\">\n        <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\">\n          <path d=\"M8 2C8 2 4 5 4 9a4 4 0 008 0c0-4-4-7-4-7z\" stroke=\"#8b6f4e\" stroke-width=\"1.5\"><\u002Fpath>\n        <\u002Fsvg>\n      <\u002Fdiv>\n      <p class=\"topic-name\">好奇心と深掘り<\u002Fp>\n      <p class=\"topic-desc\">気になったことをすぐ調べ、興味が湧いたテーマを本で深く知っていく姿勢<\u002Fp>\n    <\u002Fdiv>\n    <div class=\"topic-card fade-in\">\n      <div class=\"topic-icon\">\n        <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\">\n          <path d=\"M5 8a3 3 0 006 0\" stroke=\"#8b6f4e\" stroke-width=\"1.5\" stroke-linecap=\"round\"><\u002Fpath>\n          <circle cx=\"5\" cy=\"5\" r=\"1.5\" stroke=\"#8b6f4e\" stroke-width=\"1.5\"><\u002Fcircle>\n          <circle cx=\"11\" cy=\"5\" r=\"1.5\" stroke=\"#8b6f4e\" stroke-width=\"1.5\"><\u002Fcircle>\n        <\u002Fsvg>\n      <\u002Fdiv>\n      <p class=\"topic-name\">家族との関わり<\u002Fp>\n      <p class=\"topic-desc\">子どもとの時間、「ちょっと待って」という声かけが価値観に与える影響<\u002Fp>\n    <\u002Fdiv>\n    <div class=\"topic-card fade-in\">\n      <div class=\"topic-icon\">\n        <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\">\n          <rect x=\"3\" y=\"3\" width=\"10\" height=\"10\" rx=\"1\" stroke=\"#8b6f4e\" stroke-width=\"1.5\"><\u002Frect>\n          <path d=\"M3 7h10\" stroke=\"#8b6f4e\" stroke-width=\"1.5\"><\u002Fpath>\n          <path d=\"M7 3v10\" stroke=\"#8b6f4e\" stroke-width=\"1.5\"><\u002Fpath>\n        <\u002Fsvg>\n      <\u002Fdiv>\n      <p class=\"topic-name\">自分らしさ<\u002Fp>\n      <p class=\"topic-desc\">自己肯定感、コンプレックスとの向き合い方、自分の価値観を貫く生き方<\u002Fp>\n    <\u002Fdiv>\n    <div class=\"topic-card fade-in\">\n      <div class=\"topic-icon\">\n        <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\">\n          <path d=\"M3 13l3-3 3 3 3-7 2 3\" stroke=\"#8b6f4e\" stroke-width=\"1.5\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><\u002Fpath>\n        <\u002Fsvg>\n      <\u002Fdiv>\n      <p class=\"topic-name\">行動変容<\u002Fp>\n      <p class=\"topic-desc\">読んだ内容を実際に試し、振り返り、自分に合う形に変えていく力<\u002Fp>\n    <\u002Fdiv>\n    <div class=\"topic-card fade-in\">\n      <div class=\"topic-icon\">\n        <svg width=\"16\" height=\"16\" viewBox=\"0 0 16 16\" fill=\"none\">\n          <path d=\"M8 3v10M3 8h10\" stroke=\"#8b6f4e\" stroke-width=\"1.5\" stroke-linecap=\"round\"><\u002Fpath>\n        <\u002Fsvg>\n      <\u002Fdiv>\n      <p class=\"topic-name\">豊かさの循環<\u002Fp>\n      <p class=\"topic-desc\">相手を喜ばせる視点、自分だけの利益ではない考え方が豊かさを生む<\u002Fp>\n    <\u002Fdiv>\n  <\u002Fdiv>\n<\u002Fsection>\n\n<!-- NEXT MEETING -->\n<section class=\"next-section\">\n  <div class=\"next-inner\">\n    <p class=\"next-label\">Next Meeting<\u002Fp>\n    <p class=\"next-date\">4月24日（金）<\u002Fp>\n    <p class=\"next-time\">21:00〜<\u002Fp>\n    <div class=\"next-divider\"><\u002Fdiv>\n    <p class=\"next-desc\">今回の会は「おすすめ本」の紹介からスタートし、時間の使い方・家族との関わり・自分らしさ・実践する力まで、日常や働き方にもつながる深いテーマに広がりました。本を通して、その人の価値観や考え方が見える、とても豊かな時間でした。<\u002Fp>\n  <\u002Fdiv>\n<\u002Fsection>\n\n<footer>© 2026 ディスカッション会 · 内輪向け資料<\u002Ffooter>\n\n<script>\n  const observer = new IntersectionObserver((entries) => {\n    entries.forEach(e => {\n      if (e.isIntersecting) {\n        e.target.classList.add('visible');\n      }\n    });\n  }, { threshold: 0.1 });\n\n  document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));\n<\u002Fscript>\n\n\n\n<\u002Fbody><\u002Fhtml>"
+  </script>
+</body>
+</html>
